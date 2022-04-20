@@ -75,9 +75,11 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
 
 class Scene {
 public:
+    Buffer* uniformBuffer;
     VkDescriptorPool descriptorPool;
+    VkDescriptorSetLayout descriptorSetLayout;
 
-    Scene(VkDevice device);
+    Scene(Device& device);
     void destroy(VkDevice device);
 };
 

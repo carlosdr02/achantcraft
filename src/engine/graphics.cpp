@@ -806,10 +806,14 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Scene::Scene(VkDevice device) {
+Scene::Scene(Device& device) {
+    // Create the uniform buffer.
+    VkDeviceSize uniformBufferSize = 2 * sizeof(glm::mat4);
+    uniformBuffer = new Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
     // Create the descriptor pool.
     VkDescriptorPoolSize descriptorPoolSize = {
-        .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+        .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         .descriptorCount = 1
     };
 
@@ -822,11 +826,35 @@ Scene::Scene(VkDevice device) {
         .pPoolSizes    = &descriptorPoolSize
     };
 
-    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+    vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    // Create the descriptor set layout.
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
+        .binding            = 0,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount    = 1,
+        .stageFlags         = VK_SHADER_STAGE_VERTEX_BIT,
+        .pImmutableSamplers = nullptr
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = nullptr,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &descriptorSetLayoutBinding
+    };
+
+    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
 }
 
 void Scene::destroy(VkDevice device) {
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+    uniformBuffer->destroy(device);
+
+    delete uniformBuffer;
 }
 
 static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {

@@ -39,6 +39,9 @@ int main() {
     };
 
     Renderer renderer(device, rendererCreateInfo);
+
+    Scene scene(device);
+
     renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
 
     while (!glfwWindowShouldClose(window)) {
@@ -60,6 +63,8 @@ int main() {
     }
 
     renderer.waitIdle(device.logical);
+
+    scene.destroy(device.logical);
     renderer.destroy(device.logical);
 
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
