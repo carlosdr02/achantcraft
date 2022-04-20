@@ -857,6 +857,28 @@ Scene::Scene(Device& device) {
     };
 
     vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, &descriptorSet);
+
+    // Update the descriptor set.
+    VkDescriptorBufferInfo descriptorBufferInfo = {
+        .buffer = *uniformBuffer,
+        .offset = 0,
+        .range  = uniformBufferSize
+    };
+
+    VkWriteDescriptorSet writeDescriptorSet = {
+        .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext            = nullptr,
+        .dstSet           = descriptorSet,
+        .dstBinding       = 0,
+        .dstArrayElement  = 0,
+        .descriptorCount  = 1,
+        .descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .pImageInfo       = nullptr,
+        .pBufferInfo      = &descriptorBufferInfo,
+        .pTexelBufferView = nullptr
+    };
+
+    vkUpdateDescriptorSets(device.logical, 1, &writeDescriptorSet, 0, nullptr);
 }
 
 void Scene::destroy(VkDevice device) {
