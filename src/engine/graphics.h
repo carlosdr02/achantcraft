@@ -73,6 +73,14 @@ struct GraphicsPipelineCreateInfo {
 
 VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateInfo& createInfo);
 
+class Scene {
+public:
+    VkDescriptorPool descriptorPool;
+
+    Scene(VkDevice device);
+    void destroy(VkDevice device);
+};
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;
