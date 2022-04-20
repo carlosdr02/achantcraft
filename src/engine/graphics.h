@@ -78,6 +78,7 @@ public:
     Buffer* uniformBuffer;
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSet descriptorSet;
 
     Scene(Device& device);
     void destroy(VkDevice device);

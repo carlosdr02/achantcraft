@@ -846,6 +846,17 @@ Scene::Scene(Device& device) {
     };
 
     vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
+
+    // Allocate the descriptor set.
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = 1,
+        .pSetLayouts        = &descriptorSetLayout
+    };
+
+    vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, &descriptorSet);
 }
 
 void Scene::destroy(VkDevice device) {
