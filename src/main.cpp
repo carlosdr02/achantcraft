@@ -46,7 +46,144 @@ int main() {
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
-    Scene scene(device);
+    VkDeviceSize vertexBufferSize = 32 * 32 * 12;
+    Scene scene(device, renderPass, vertexBufferSize);
+
+    // PERLIN NOISE
+
+    // Create the descriptor pool.
+    VkDescriptorPoolSize descriptorPoolSize = {
+        .type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount = 1
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = 1,
+        .poolSizeCount = 1,
+        .pPoolSizes    = &descriptorPoolSize
+    };
+
+    VkDescriptorPool descriptorPool;
+    vkCreateDescriptorPool(device.logical, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    // Create the descriptor set layout.
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
+        .binding            = 0,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .descriptorCount    = 1,
+        .stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT,
+        .pImmutableSamplers = nullptr
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = nullptr,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &descriptorSetLayoutBinding
+    };
+
+    VkDescriptorSetLayout descriptorSetLayout;
+    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout);
+
+    // Allocate the descriptor set.
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = 1,
+        .pSetLayouts        = &descriptorSetLayout
+    };
+
+    VkDescriptorSet descriptorSet;
+    vkAllocateDescriptorSets(device.logical, &descriptorSetAllocateInfo, &descriptorSet);
+
+    // Update the descriptor set.
+    VkDescriptorBufferInfo descriptorBufferInfo = {
+        .buffer = *scene.vertexBuffer,
+        .offset = 0,
+        .range  = vertexBufferSize
+    };
+
+    VkWriteDescriptorSet writeDescriptorSet = {
+        .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext            = nullptr,
+        .dstSet           = descriptorSet,
+        .dstBinding       = 0,
+        .dstArrayElement  = 0,
+        .descriptorCount  = 1,
+        .descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .pImageInfo       = nullptr,
+        .pBufferInfo      = &descriptorBufferInfo,
+        .pTexelBufferView = nullptr
+    };
+
+    vkUpdateDescriptorSets(device.logical, 1, &writeDescriptorSet, 0, nullptr);
+
+    // Create the pipeline layout.
+    VkPipelineLayout pipelineLayout = createPipelineLayout(device.logical, 1, &descriptorSetLayout);
+
+    // Create the compute pipeline.
+    VkPipeline computePipeline = createComputePipeline(device.logical, "../src/game/noise.spv", pipelineLayout);
+
+    // Create the command pool.
+    VkCommandPoolCreateInfo commandPoolCreateInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+        .queueFamilyIndex = device.queueFamilyIndex
+    };
+
+    VkCommandPool commandPool;
+    vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &commandPool);
+
+    // Allocate the command buffer.
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = commandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1
+    };
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device.logical, &commandBufferAllocateInfo, &commandBuffer);
+
+    // Record the command buffer.
+    VkCommandBufferBeginInfo commandBufferBeginInfo = {
+        .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext            = nullptr,
+        .flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+        .pInheritanceInfo = nullptr
+    };
+
+    vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    vkCmdDispatch(commandBuffer, 1, 1, 1);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    // Submit the command buffer.
+    VkSubmitInfo submitInfo = {
+        .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext                = nullptr,
+        .waitSemaphoreCount   = 0,
+        .pWaitSemaphores      = nullptr,
+        .pWaitDstStageMask    = nullptr,
+        .commandBufferCount   = 1,
+        .pCommandBuffers      = &commandBuffer,
+        .signalSemaphoreCount = 0,
+        .pSignalSemaphores    = nullptr
+    };
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+    // END PERLIN NOISE
 
     renderer.recordCommandBuffers(device.logical, renderPass, extent, scene);
 
@@ -102,6 +239,15 @@ int main() {
     }
 
     renderer.waitIdle(device.logical);
+
+    // PERLIN NOISE
+    vkDestroyCommandPool(device.logical, commandPool, nullptr);
+    vkDestroyPipeline(device.logical, computePipeline, nullptr);
+    vkDestroyPipelineLayout(device.logical, pipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device.logical, descriptorSetLayout, nullptr);
+    vkDestroyDescriptorPool(device.logical, descriptorPool, nullptr);
+    // END PERLIN NOISE
+
     scene.destroy(device.logical);
     renderer.destroy(device.logical);
 

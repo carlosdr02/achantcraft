@@ -550,6 +550,10 @@ Buffer::operator VkBuffer() {
     return buffer;
 }
 
+const VkBuffer* Buffer::operator&() const {
+    return &buffer;
+}
+
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t descriptorSetLayoutCount, const VkDescriptorSetLayout* descriptorSetLayouts) {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -806,7 +810,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Scene::Scene(Device& device) {
+Scene::Scene(Device& device, VkRenderPass renderPass, VkDeviceSize vertexBufferSize) {
     // Create the uniform buffer.
     VkDeviceSize uniformBufferSize = 2 * sizeof(glm::mat4);
     uniformBuffer = new Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
@@ -885,15 +889,32 @@ Scene::Scene(Device& device) {
 
     // Create the pipeline layout.
     pipelineLayout = createPipelineLayout(device.logical, 1, &descriptorSetLayout);
+
+    // Create the graphics pipeline.
+    GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
+        .vertexShaderPath   = "../src/engine/shaders/vert.spv",
+        .fragmentShaderPath = "../src/engine/shaders/frag.spv",
+        .pipelineLayout     = pipelineLayout,
+        .renderPass         = renderPass
+    };
+
+    graphicsPipeline = createGraphicsPipeline(device.logical, graphicsPipelineCreateInfo);
+
+    // Create the vertex buffer.
+    vertexBuffer = new Buffer(device, vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
 void Scene::destroy(VkDevice device) {
+    vertexBuffer->destroy(device);
+
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     uniformBuffer->destroy(device);
 
+    delete vertexBuffer;
     delete uniformBuffer;
 }
 
@@ -1062,6 +1083,24 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
 
         vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, scene.pipelineLayout, 0, 1, &scene.descriptorSet, 0, nullptr);
+        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, scene.graphicsPipeline);
+
+        VkDeviceSize offset = 0;
+
+        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &*scene.vertexBuffer, &offset);
+
+        VkViewport viewport = {
+            .x        = 0,
+            .y        = (float)extent.height,
+            .width    = (float)extent.width,
+            .height   = -(float)extent.height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+        };
+
+        vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffers[i], 0, 1, &renderArea);
+        vkCmdDraw(commandBuffers[i], 1024, 1, 0, 0);
 
         VkSubpassEndInfo subpassEndInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
