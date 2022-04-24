@@ -1,5 +1,6 @@
 #include <graphics.h>
 #include <camera.h>
+#include <cursor.h>
 
 int main() {
     glfwInit();
@@ -14,6 +15,7 @@ int main() {
 #endif // _DEBUG
 
     Window window(instance, 1600, 900, applicationName);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     Device device(instance, window.surface);
 
@@ -59,6 +61,9 @@ int main() {
     renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, scene);
 
     Camera camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), 90.0f);
+
+    glfwSetWindowUserPointer(window, &camera.orientation);
+    glfwSetCursorPosCallback(window, cursorPosCallback);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

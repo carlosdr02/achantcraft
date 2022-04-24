@@ -17,6 +17,7 @@ TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
 # Interface
 ADD_LIBRARY(interface
     src/interface/camera.cpp
+    src/interface/cursor.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(interface PUBLIC src/interface)
@@ -35,6 +36,7 @@ SET(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 ADD_SUBDIRECTORY(dependencies/glfw)
 
 TARGET_LINK_LIBRARIES(engine glfw)
+TARGET_LINK_LIBRARIES(interface glfw)
 
 # GLM
 ADD_SUBDIRECTORY(dependencies/glm)
