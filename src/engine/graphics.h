@@ -55,6 +55,7 @@ public:
     void destroy(VkDevice device);
 
     operator VkBuffer();
+    const VkBuffer* operator&() const;
 
 private:
     VkBuffer buffer;
@@ -80,8 +81,10 @@ public:
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSet descriptorSet;
     VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
+    Buffer* vertexBuffer;
 
-    Scene(Device& device);
+    Scene(Device& device, VkRenderPass renderPass, VkDeviceSize vertexBufferSize);
     void destroy(VkDevice device);
 
     void flushMappedUniformBufferMemory(VkDevice device, const void* data);
