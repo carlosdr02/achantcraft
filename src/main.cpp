@@ -46,20 +46,7 @@ int main() {
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
-    float vertices[] = {
-        0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
-    };
-
-    VkDeviceSize vertexBufferSize = sizeof(vertices);
-
-    Scene scene(device, renderPass, vertexBufferSize);
-
-    void* mappedVertexBufferMemory;
-    vkMapMemory(device.logical, scene.vertexBuffer->memory, 0, vertexBufferSize, 0, &mappedVertexBufferMemory);
-    memcpy(mappedVertexBufferMemory, vertices, vertexBufferSize);
-    vkUnmapMemory(device.logical, scene.vertexBuffer->memory);
+    Scene scene(device);
 
     renderer.recordCommandBuffers(device.logical, renderPass, extent, scene);
 
