@@ -1,4 +1,5 @@
 #include <graphics.h>
+#include <camera.h>
 
 int main() {
     glfwInit();
@@ -42,10 +43,24 @@ int main() {
 
     Scene scene(device);
 
-    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
+    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, scene);
+
+    Camera camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), 90.0f);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        if (glfwGetKey(window, GLFW_KEY_W)) camera.translation.z -= 0.001f;
+        if (glfwGetKey(window, GLFW_KEY_A)) camera.translation.x -= 0.001f;
+        if (glfwGetKey(window, GLFW_KEY_S)) camera.translation.z += 0.001f;
+        if (glfwGetKey(window, GLFW_KEY_D)) camera.translation.x += 0.001f;
+
+        glm::mat4 viewProjectionMatrices[] = {
+            camera.getView(),
+            camera.getProjection()
+        };
+
+        scene.flushMappedUniformBufferMemory(device.logical, viewProjectionMatrices);
 
         if (!renderer.draw(device.logical)) {
             int width, height;
@@ -58,7 +73,7 @@ int main() {
             surfaceCapabilities = device.getSurfaceCapabilities(window);
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent);
+            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, scene);
         }
     }
 

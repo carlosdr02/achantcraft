@@ -811,6 +811,9 @@ Scene::Scene(Device& device) {
     VkDeviceSize uniformBufferSize = 2 * sizeof(glm::mat4);
     uniformBuffer = new Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
+    // Map the uniform buffer memory.
+    vkMapMemory(device.logical, uniformBuffer->memory, 0, uniformBufferSize, 0, &mappedUniformBufferMemory);
+
     // Create the descriptor pool.
     VkDescriptorPoolSize descriptorPoolSize = {
         .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -879,15 +882,34 @@ Scene::Scene(Device& device) {
     };
 
     vkUpdateDescriptorSets(device.logical, 1, &writeDescriptorSet, 0, nullptr);
+
+    // Create the pipeline layout.
+    pipelineLayout = createPipelineLayout(device.logical, 1, &descriptorSetLayout);
 }
 
 void Scene::destroy(VkDevice device) {
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
     uniformBuffer->destroy(device);
 
     delete uniformBuffer;
+}
+
+void Scene::flushMappedUniformBufferMemory(VkDevice device, const void* data) {
+    VkDeviceSize uniformBufferSize = 2 * sizeof(glm::mat4);
+    memcpy(mappedUniformBufferMemory, data, uniformBufferSize);
+
+    VkMappedMemoryRange mappedMemoryRange = {
+        .sType  = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+        .pNext  = nullptr,
+        .memory = uniformBuffer->memory,
+        .offset = 0,
+        .size   = uniformBufferSize
+    };
+
+    vkFlushMappedMemoryRanges(device, 1, &mappedMemoryRange);
 }
 
 static VkSwapchainKHR createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -999,7 +1021,7 @@ void Renderer::destroy(VkDevice device) {
     delete[] imageAvailableSemaphores;
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent) {
+void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent, Scene& scene) {
     vkResetCommandPool(device, commandPool, 0);
 
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
@@ -1039,6 +1061,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
         };
 
         vkCmdBeginRenderPass2(commandBuffers[i], &renderPassBeginInfo, &subpassBeginInfo);
+        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, scene.pipelineLayout, 0, 1, &scene.descriptorSet, 0, nullptr);
 
         VkSubpassEndInfo subpassEndInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,

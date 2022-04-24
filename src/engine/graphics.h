@@ -79,9 +79,15 @@ public:
     VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSet descriptorSet;
+    VkPipelineLayout pipelineLayout;
 
     Scene(Device& device);
     void destroy(VkDevice device);
+
+    void flushMappedUniformBufferMemory(VkDevice device, const void* data);
+
+private:
+    void* mappedUniformBufferMemory;
 };
 
 struct RendererCreateInfo {
@@ -102,7 +108,7 @@ public:
     void recreate(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent);
+    void recordCommandBuffers(VkDevice device, VkRenderPass renderPass, VkExtent2D extent, Scene& scene);
     bool draw(VkDevice device);
 
     void waitIdle(VkDevice device);

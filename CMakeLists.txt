@@ -14,6 +14,13 @@ ADD_LIBRARY(engine
 
 TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
 
+# Interface
+ADD_LIBRARY(interface
+    src/interface/camera.cpp
+)
+
+TARGET_INCLUDE_DIRECTORIES(interface PUBLIC src/interface)
+
 # Vulkan
 FIND_PACKAGE(Vulkan REQUIRED)
 
@@ -33,8 +40,10 @@ TARGET_LINK_LIBRARIES(engine glfw)
 ADD_SUBDIRECTORY(dependencies/glm)
 
 TARGET_LINK_LIBRARIES(engine glm)
+TARGET_LINK_LIBRARIES(interface glm)
 
 # Executable
 ADD_EXECUTABLE(achantcraft src/main.cpp)
 
 TARGET_LINK_LIBRARIES(achantcraft engine)
+TARGET_LINK_LIBRARIES(achantcraft interface)
