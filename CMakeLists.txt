@@ -18,6 +18,7 @@ TARGET_INCLUDE_DIRECTORIES(engine PUBLIC src/engine)
 ADD_LIBRARY(interface
     src/interface/camera.cpp
     src/interface/cursor.cpp
+    src/interface/mouse.cpp
 )
 
 TARGET_INCLUDE_DIRECTORIES(interface PUBLIC src/interface)

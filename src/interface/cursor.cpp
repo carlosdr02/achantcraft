@@ -1,11 +1,11 @@
 #include "cursor.h"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include "camera.h"
 
-static float sens;
+static float sensitivity = 0.1f;
 
-void setSensitivity(float sensitivity) {
-    sens = sensitivity;
+float& getSensitivity() {
+    return sensitivity;
 }
 
 static float clamp(float val, float min, float max) {
@@ -30,8 +30,8 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     float xOffset = xPos - xLast;
     float yOffset = yLast - yPos; 
 
-    xOffset *= sens;
-    yOffset *= sens;
+    xOffset *= sensitivity;
+    yOffset *= sensitivity;
 
     xLast = xPos;
     yLast = yPos;
@@ -46,11 +46,10 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
 
     float cPitch = cos(rPitch);
 
-    glm::vec3* orientation = (glm::vec3*)glfwGetWindowUserPointer(window);
+    Camera* camera = (Camera*)glfwGetWindowUserPointer(window);
+    glm::vec3& orientation = camera->orientation;
 
-    orientation->x = cos(rYaw) * cPitch;
-    orientation->y = sin(rPitch);
-    orientation->z = sin(rYaw) * cPitch;
-
-    *orientation = glm::normalize(*orientation);
+    orientation.x = cos(rYaw) * cPitch;
+    orientation.y = sin(rPitch);
+    orientation.z = sin(rYaw) * cPitch;
 }

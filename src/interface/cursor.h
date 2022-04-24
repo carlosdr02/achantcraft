@@ -1,5 +1,5 @@
 #include <GLFW/glfw3.h>
 
-void setSensitivity(float sensitivity);
+float& getSensitivity();
 
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);

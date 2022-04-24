@@ -1,6 +1,7 @@
 #include <graphics.h>
 #include <camera.h>
 #include <cursor.h>
+#include <mouse.h>
 
 int main() {
     glfwInit();
@@ -43,7 +44,7 @@ int main() {
 
     Renderer renderer(device, rendererCreateInfo);
 
-    VkExtent2D extent = surfaceCapabilities.currentExtent;
+    VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
     float vertices[] = {
         0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
@@ -62,19 +63,17 @@ int main() {
 
     renderer.recordCommandBuffers(device.logical, renderPass, extent, scene);
 
-    float cameraSpeed = 0.001f;
-    setCameraSpeed(cameraSpeed);
+    float& cameraSpeed = getCameraSpeed();
 
-    setAspectRatio(extent.width / (float)extent.height);
-    setNearPlane(0.05f);
-    setFarPlane(100.0f);
-
-    setSensitivity(0.1f);
+    float& aspectRatio = getAspectRatio();
+    aspectRatio = extent.width / (float)extent.height;
 
     Camera camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), 90.0f);
 
-    glfwSetWindowUserPointer(window, &camera.orientation);
+    glfwSetWindowUserPointer(window, &camera);
     glfwSetCursorPosCallback(window, cursorPosCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetScrollCallback(window, scrollCallback);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -106,13 +105,12 @@ int main() {
             } while(width == 0 || height == 0);
 
             surfaceCapabilities = device.getSurfaceCapabilities(window);
-            extent = surfaceCapabilities.currentExtent;
 
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
             renderer.recordCommandBuffers(device.logical, renderPass, extent, scene);
 
-            setAspectRatio(extent.width / (float)extent.height);
+            aspectRatio = extent.width / (float)extent.height;
         }
     }
 

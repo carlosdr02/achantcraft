@@ -2,25 +2,17 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-static float speed;
-static float aspect;
-static float near;
-static float far;
+static float cameraSpeed = 0.001f;
+static float aspectRatio;
+static float nearPlane = 0.05f;
+static float farPlane = 100.0f;
 
-void setCameraSpeed(float cameraSpeed) {
-    speed = cameraSpeed;
+float& getCameraSpeed() {
+    return cameraSpeed;
 }
 
-void setAspectRatio(float aspectRatio) {
-    aspect = aspectRatio;
-}
-
-void setNearPlane(float nearPlane) {
-    near = nearPlane;
-}
-
-void setFarPlane(float farPlane) {
-    far = farPlane;
+float& getAspectRatio() {
+    return aspectRatio;
 }
 
 Camera::Camera(const glm::vec3& translation, const glm::vec3& target, float fov) : translation(translation), fov(fov) {
@@ -44,5 +36,5 @@ glm::mat4 Camera::getViewMatrix(const glm::vec3& upVector) const {
 }
 
 glm::mat4 Camera::getProjectionMatrix() const {
-    return glm::perspective(glm::radians(fov), aspect, near, far);
+    return glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
 }

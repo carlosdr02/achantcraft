@@ -1,10 +1,7 @@
 #include <glm/glm.hpp>
 
-void setCameraSpeed(float cameraSpeed);
-
-void setAspectRatio(float aspectRatio);
-void setNearPlane(float nearPlane);
-void setFarPlane(float farPlane);
+float& getCameraSpeed();
+float& getAspectRatio();
 
 class Camera {
 public:
