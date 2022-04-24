@@ -43,6 +43,8 @@ int main() {
 
     Renderer renderer(device, rendererCreateInfo);
 
+    VkExtent2D extent = surfaceCapabilities.currentExtent;
+
     float vertices[] = {
         0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,
         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f,
@@ -58,7 +60,16 @@ int main() {
     memcpy(mappedVertexBufferMemory, vertices, vertexBufferSize);
     vkUnmapMemory(device.logical, scene.vertexBuffer->memory);
 
-    renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, scene);
+    renderer.recordCommandBuffers(device.logical, renderPass, extent, scene);
+
+    float cameraSpeed = 0.001f;
+    setCameraSpeed(cameraSpeed);
+
+    setAspectRatio(extent.width / (float)extent.height);
+    setNearPlane(0.05f);
+    setFarPlane(100.0f);
+
+    setSensitivity(0.1f);
 
     Camera camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), 90.0f);
 
@@ -68,14 +79,20 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        if (glfwGetKey(window, GLFW_KEY_W)) camera.translation.z -= 0.001f;
-        if (glfwGetKey(window, GLFW_KEY_A)) camera.translation.x -= 0.001f;
-        if (glfwGetKey(window, GLFW_KEY_S)) camera.translation.z += 0.001f;
-        if (glfwGetKey(window, GLFW_KEY_D)) camera.translation.x += 0.001f;
+        glm::vec3 cameraUpVector = camera.getUpVector();
+        glm::vec3 cameraRightVector = camera.getRightVector(cameraUpVector);
+        glm::vec3 cameraFrontVector = camera.getFrontVector(cameraRightVector, cameraUpVector);
+
+        if (glfwGetKey(window, GLFW_KEY_W)) camera.translation -= cameraFrontVector * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_A)) camera.translation -= cameraRightVector * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_S)) camera.translation += cameraFrontVector * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_D)) camera.translation += cameraRightVector * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_SPACE)) camera.translation += cameraUpVector * cameraSpeed;
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) camera.translation -= cameraUpVector * cameraSpeed;
 
         glm::mat4 viewProjectionMatrices[] = {
-            camera.getView(),
-            camera.getProjection()
+            camera.getViewMatrix(cameraUpVector),
+            camera.getProjectionMatrix()
         };
 
         scene.flushMappedUniformBufferMemory(device.logical, viewProjectionMatrices);
@@ -89,14 +106,17 @@ int main() {
             } while(width == 0 || height == 0);
 
             surfaceCapabilities = device.getSurfaceCapabilities(window);
+            extent = surfaceCapabilities.currentExtent;
+
             renderer.waitIdle(device.logical);
             renderer.recreate(device, rendererCreateInfo);
-            renderer.recordCommandBuffers(device.logical, renderPass, surfaceCapabilities.currentExtent, scene);
+            renderer.recordCommandBuffers(device.logical, renderPass, extent, scene);
+
+            setAspectRatio(extent.width / (float)extent.height);
         }
     }
 
     renderer.waitIdle(device.logical);
-
     scene.destroy(device.logical);
     renderer.destroy(device.logical);
 

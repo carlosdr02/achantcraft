@@ -2,9 +2,13 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-static float sensitivity = 0.1f;
+static float sens;
 
-float clamp(float val, float min, float max) {
+void setSensitivity(float sensitivity) {
+    sens = sensitivity;
+}
+
+static float clamp(float val, float min, float max) {
     if (val < min) {
         return min;
     }
@@ -26,8 +30,8 @@ void cursorPosCallback(GLFWwindow* window, double xPos, double yPos) {
     float xOffset = xPos - xLast;
     float yOffset = yLast - yPos; 
 
-    xOffset *= sensitivity;
-    yOffset *= sensitivity;
+    xOffset *= sens;
+    yOffset *= sens;
 
     xLast = xPos;
     yLast = yPos;
