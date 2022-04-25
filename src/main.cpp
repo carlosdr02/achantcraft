@@ -46,7 +46,7 @@ int main() {
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
-    VkDeviceSize vertexBufferSize = 32 * 32 * 12;
+    VkDeviceSize vertexBufferSize = 32 * 32 * 16;
     Scene scene(device, renderPass, vertexBufferSize);
 
     // PERLIN NOISE

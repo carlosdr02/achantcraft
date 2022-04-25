@@ -662,14 +662,14 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
 
     VkVertexInputBindingDescription vertexInputBindingDescription = {
         .binding   = 0,
-        .stride    = sizeof(glm::vec3),
+        .stride    = sizeof(glm::vec4),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
 
     VkVertexInputAttributeDescription vertexInputAttributeDescription = {
         .location = 0,
         .binding  = 0,
-        .format   = VK_FORMAT_R32G32B32_SFLOAT,
+        .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
         .offset   = 0
     };
 
