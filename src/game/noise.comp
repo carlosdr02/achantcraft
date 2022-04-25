@@ -6,6 +6,10 @@ layout(set = 0, binding = 0) writeonly buffer VertexBuffer {
     vec4 vertices[1024];
 } vertexBuffer;
 
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main() {
-    vertexBuffer.vertices[gl_LocalInvocationIndex] = vec4(gl_LocalInvocationID.x, 0.0, gl_LocalInvocationID.y, 1.0);
+    vertexBuffer.vertices[gl_LocalInvocationIndex] = vec4(gl_LocalInvocationID.x, rand(vec2(gl_LocalInvocationID.x, gl_LocalInvocationID.y)), gl_LocalInvocationID.y, 1.0);
 }

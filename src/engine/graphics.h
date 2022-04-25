@@ -82,9 +82,14 @@ public:
     VkDescriptorSet descriptorSet;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
+    uint32_t vertexCount;
+    VkDeviceSize vertexBufferSize;
     Buffer* vertexBuffer;
+    uint32_t indexCount;
+    VkDeviceSize indexBufferSize;
+    Buffer* indexBuffer;
 
-    Scene(Device& device, VkRenderPass renderPass, VkDeviceSize vertexBufferSize);
+    Scene(Device& device, VkRenderPass renderPass, uint32_t vertexCount, uint32_t indexCount);
     void destroy(VkDevice device);
 
     void flushMappedUniformBufferMemory(VkDevice device, const void* data);

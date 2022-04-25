@@ -3,6 +3,27 @@
 #include <cursor.h>
 #include <mouse.h>
 
+void generateIndices(uint16_t vertexGridWidth, uint16_t* indices) {
+    uint16_t indexOffset = 0;
+
+    for (uint16_t i = 0; i < vertexGridWidth - 1; ++i) {
+        for (uint16_t j = 0; j < vertexGridWidth - 1; ++j) {
+            uint16_t lu = j + i * vertexGridWidth;
+            uint16_t ru = j + 1 + i * vertexGridWidth;
+            uint16_t rb = j + 1 + (i + 1) * vertexGridWidth;
+            uint16_t lb = j + (i + 1) * vertexGridWidth;
+
+            indices[indexOffset++] = lu;
+            indices[indexOffset++] = ru;
+            indices[indexOffset++] = lb;
+
+            indices[indexOffset++] = ru;
+            indices[indexOffset++] = rb;
+            indices[indexOffset++] = lb;
+        }
+    }
+}
+
 int main() {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -46,8 +67,9 @@ int main() {
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
-    VkDeviceSize vertexBufferSize = 32 * 32 * 16;
-    Scene scene(device, renderPass, vertexBufferSize);
+    uint32_t vertexCount = 32 * 32;
+    uint32_t indexCount = 31 * 31 * 2 * 3;
+    Scene scene(device, renderPass, vertexCount, indexCount);
 
     // PERLIN NOISE
 
@@ -105,7 +127,7 @@ int main() {
     VkDescriptorBufferInfo descriptorBufferInfo = {
         .buffer = *scene.vertexBuffer,
         .offset = 0,
-        .range  = vertexBufferSize
+        .range  = scene.vertexBufferSize
     };
 
     VkWriteDescriptorSet writeDescriptorSet = {
@@ -128,6 +150,14 @@ int main() {
 
     // Create the compute pipeline.
     VkPipeline computePipeline = createComputePipeline(device.logical, "../src/game/noise.spv", pipelineLayout);
+
+    // Create the staging buffer.
+    Buffer stagingBuffer(device, scene.indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    void* mappedStagingBufferMemory;
+    vkMapMemory(device.logical, stagingBuffer.memory, 0, scene.indexBufferSize, 0, &mappedStagingBufferMemory);
+    generateIndices(sqrt(vertexCount), (uint16_t*)mappedStagingBufferMemory);
+    vkUnmapMemory(device.logical, stagingBuffer.memory);
 
     // Create the command pool.
     VkCommandPoolCreateInfo commandPoolCreateInfo = {
@@ -166,6 +196,14 @@ int main() {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
     vkCmdDispatch(commandBuffer, 1, 1, 1);
 
+    VkBufferCopy bufferCopy = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size      = scene.indexBufferSize
+    };
+
+    vkCmdCopyBuffer(commandBuffer, stagingBuffer, *scene.indexBuffer, 1, &bufferCopy);
+
     vkEndCommandBuffer(commandBuffer);
 
     // Submit the command buffer.
@@ -182,6 +220,9 @@ int main() {
     };
 
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
+
+    stagingBuffer.destroy(device.logical);
 
     // END PERLIN NOISE
 

@@ -233,6 +233,8 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
 
     const char* swapchainExtension = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
+    VkPhysicalDeviceFeatures physicalDeviceFeatures = { .fillModeNonSolid = VK_TRUE };
+
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext                   = nullptr,
@@ -243,7 +245,7 @@ Device::Device(VkInstance instance, VkSurfaceKHR surface) {
         .ppEnabledLayerNames     = nullptr,
         .enabledExtensionCount   = 1,
         .ppEnabledExtensionNames = &swapchainExtension,
-        .pEnabledFeatures        = nullptr
+        .pEnabledFeatures        = &physicalDeviceFeatures
     };
 
     vkCreateDevice(physical, &deviceCreateInfo, nullptr, &logical);
@@ -707,7 +709,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .flags                   = 0,
         .depthClampEnable        = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .polygonMode             = VK_POLYGON_MODE_LINE,
         .cullMode                = VK_CULL_MODE_NONE,
         .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable         = VK_FALSE,
@@ -810,7 +812,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
     return graphicsPipeline;
 }
 
-Scene::Scene(Device& device, VkRenderPass renderPass, VkDeviceSize vertexBufferSize) {
+Scene::Scene(Device& device, VkRenderPass renderPass, uint32_t vertexCount, uint32_t indexCount) : vertexCount(vertexCount), indexCount(indexCount) {
     // Create the uniform buffer.
     VkDeviceSize uniformBufferSize = 2 * sizeof(glm::mat4);
     uniformBuffer = new Buffer(device, uniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
@@ -901,10 +903,16 @@ Scene::Scene(Device& device, VkRenderPass renderPass, VkDeviceSize vertexBufferS
     graphicsPipeline = createGraphicsPipeline(device.logical, graphicsPipelineCreateInfo);
 
     // Create the vertex buffer.
-    vertexBuffer = new Buffer(device, vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vertexBufferSize = vertexCount * sizeof(glm::vec4);
+    vertexBuffer = new Buffer(device, vertexCount * sizeof(glm::vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // Create the index buffer.
+    indexBufferSize = indexCount * sizeof(uint16_t);
+    indexBuffer = new Buffer(device, indexCount * sizeof(uint16_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
 void Scene::destroy(VkDevice device) {
+    indexBuffer->destroy(device);
     vertexBuffer->destroy(device);
 
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
@@ -914,6 +922,7 @@ void Scene::destroy(VkDevice device) {
 
     uniformBuffer->destroy(device);
 
+    delete indexBuffer;
     delete vertexBuffer;
     delete uniformBuffer;
 }
@@ -1088,6 +1097,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
         VkDeviceSize offset = 0;
 
         vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &*scene.vertexBuffer, &offset);
+        vkCmdBindIndexBuffer(commandBuffers[i], *scene.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
         VkViewport viewport = {
             .x        = 0,
@@ -1100,7 +1110,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
 
         vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
         vkCmdSetScissor(commandBuffers[i], 0, 1, &renderArea);
-        vkCmdDraw(commandBuffers[i], 1024, 1, 0, 0);
+        vkCmdDrawIndexed(commandBuffers[i], scene.indexCount, 1, 0, 0, 0);
 
         VkSubpassEndInfo subpassEndInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
