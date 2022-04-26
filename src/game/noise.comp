@@ -1,11 +1,11 @@
 #version 450
 
-#define OCTAVE_COUNT 7
+#define OCTAVE_COUNT 10
 
 layout(local_size_x = 32, local_size_y = 32) in;
 
 layout(set = 0, binding = 0) writeonly buffer VertexBuffer {
-    vec4 vertices[];
+    vec4 vertices[][32][1024];
 } vertexBuffer;
 
 vec2 hash(vec2 p) {
@@ -31,8 +31,8 @@ float noise(vec2 p) {
 
 float fbm(vec2 x, float H) {
     float G = exp2(-H);
-    float f = 0.01;
-    float a = 25.0;
+    float f = 0.00075;
+    float a = 100.0;
     float t = 0.0;
 
     for(int i = 0; i < OCTAVE_COUNT; i++) {
@@ -45,6 +45,8 @@ float fbm(vec2 x, float H) {
 }
 
 void main() {
-    float n = fbm(gl_LocalInvocationID.xy, 1);
-    vertexBuffer.vertices[gl_LocalInvocationIndex] = vec4(gl_LocalInvocationID.x, n, gl_LocalInvocationID.y, 1.0);
+    vec2 v = gl_GlobalInvocationID.xy - gl_WorkGroupID.xy;
+    float n = fbm(v, 1);
+    v -= gl_NumWorkGroups.x * 16;
+    vertexBuffer.vertices[gl_WorkGroupID.x][gl_WorkGroupID.y][gl_LocalInvocationIndex] = vec4(v.x, n, v.y, 1);
 }

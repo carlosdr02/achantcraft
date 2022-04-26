@@ -6,20 +6,17 @@
 void generateIndices(uint16_t vertexGridWidth, uint16_t* indices) {
     uint16_t indexOffset = 0;
 
-    for (uint16_t i = 0; i < vertexGridWidth - 1; ++i) {
-        for (uint16_t j = 0; j < vertexGridWidth - 1; ++j) {
-            uint16_t lu = j + i * vertexGridWidth;
-            uint16_t ru = j + 1 + i * vertexGridWidth;
-            uint16_t rb = j + 1 + (i + 1) * vertexGridWidth;
-            uint16_t lb = j + (i + 1) * vertexGridWidth;
+    for (uint16_t i = 0; i < vertexGridWidth; ++i) {
+        for (uint16_t j = 0; j < vertexGridWidth; ++j) {
+            uint16_t index = i * (vertexGridWidth + 1) + j;
 
-            indices[indexOffset++] = lu;
-            indices[indexOffset++] = ru;
-            indices[indexOffset++] = lb;
+            indices[indexOffset++] = index;
+            indices[indexOffset++] = index + vertexGridWidth + 2;
+            indices[indexOffset++] = index + vertexGridWidth + 1;
 
-            indices[indexOffset++] = ru;
-            indices[indexOffset++] = rb;
-            indices[indexOffset++] = lb;
+            indices[indexOffset++] = index;
+            indices[indexOffset++] = index + 1;
+            indices[indexOffset++] = index + vertexGridWidth + 2;
         }
     }
 }
@@ -67,7 +64,7 @@ int main() {
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
-    uint32_t vertexCount = 32 * 32;
+    uint32_t vertexCount = 32 * 32 * 32 * 32;
     uint32_t indexCount = 31 * 31 * 2 * 3;
     Scene scene(device, renderPass, vertexCount, indexCount);
 
@@ -156,7 +153,7 @@ int main() {
 
     void* mappedStagingBufferMemory;
     vkMapMemory(device.logical, stagingBuffer.memory, 0, scene.indexBufferSize, 0, &mappedStagingBufferMemory);
-    generateIndices(sqrt(vertexCount), (uint16_t*)mappedStagingBufferMemory);
+    generateIndices(31, (uint16_t*)mappedStagingBufferMemory);
     vkUnmapMemory(device.logical, stagingBuffer.memory);
 
     // Create the command pool.
@@ -194,7 +191,7 @@ int main() {
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-    vkCmdDispatch(commandBuffer, 1, 1, 1);
+    vkCmdDispatch(commandBuffer, 32, 32, 1);
 
     VkBufferCopy bufferCopy = {
         .srcOffset = 0,
@@ -233,7 +230,7 @@ int main() {
     float& aspectRatio = getAspectRatio();
     aspectRatio = extent.width / (float)extent.height;
 
-    Camera camera(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), 90.0f);
+    Camera camera(glm::vec3(0.0f, 50.0f, 0.0f), glm::vec3(0.0f, 50.0f, -1.0f), 90.0f);
 
     glfwSetWindowUserPointer(window, &camera);
     glfwSetCursorPosCallback(window, cursorPosCallback);

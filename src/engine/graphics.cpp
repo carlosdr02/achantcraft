@@ -1110,7 +1110,10 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
 
         vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
         vkCmdSetScissor(commandBuffers[i], 0, 1, &renderArea);
-        vkCmdDrawIndexed(commandBuffers[i], scene.indexCount, 1, 0, 0, 0);
+
+        for (uint32_t j = 0; j < 1024; ++j) {
+            vkCmdDrawIndexed(commandBuffers[i], scene.indexCount, 1, 0, j * 1024, 0);
+        }
 
         VkSubpassEndInfo subpassEndInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
