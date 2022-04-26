@@ -5,7 +5,7 @@
 static float cameraSpeed = 0.001f;
 static float aspectRatio;
 static float nearPlane = 0.05f;
-static float farPlane = 100.0f;
+static float farPlane = 1000.0f;
 
 float& getCameraSpeed() {
     return cameraSpeed;
