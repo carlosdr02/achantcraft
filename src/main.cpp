@@ -64,7 +64,7 @@ int main() {
 
     VkExtent2D& extent = surfaceCapabilities.currentExtent;
 
-    uint32_t vertexCount = 32 * 32 * 32 * 32;
+    uint32_t vertexCount = 32 * 32 * 64 * 64;
     uint32_t indexCount = 31 * 31 * 2 * 3;
     Scene scene(device, renderPass, vertexCount, indexCount);
 
@@ -191,7 +191,7 @@ int main() {
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
-    vkCmdDispatch(commandBuffer, 32, 32, 1);
+    vkCmdDispatch(commandBuffer, 64, 64, 1);
 
     VkBufferCopy bufferCopy = {
         .srcOffset = 0,

@@ -1123,7 +1123,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
         vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
         vkCmdSetScissor(commandBuffers[i], 0, 1, &renderArea);
 
-        for (uint32_t j = 0; j < 1024; ++j) {
+        for (uint32_t j = 0; j < 64 * 64; ++j) {
             vkCmdDrawIndexed(commandBuffers[i], scene.indexCount, 1, 0, j * 1024, 0);
         }
 
