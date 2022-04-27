@@ -46,7 +46,8 @@ float fbm(vec2 x, float H) {
 
 void main() {
     vec2 v = gl_GlobalInvocationID.xy - gl_WorkGroupID.xy;
-    float n = fbm(v, 1);
+    float n = fbm(v, 1) + 50;
     v -= gl_NumWorkGroups.x * 16;
+    if (n < 0) n = 0;
     vertexBuffer.vertices[gl_WorkGroupID.x][gl_WorkGroupID.y][gl_LocalInvocationIndex] = vec4(v.x, n, v.y, 1);
 }
