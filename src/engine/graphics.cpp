@@ -668,11 +668,23 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
 
-    VkVertexInputAttributeDescription vertexInputAttributeDescription = {
+    VkVertexInputAttributeDescription positionAttributeDescription = {
         .location = 0,
         .binding  = 0,
-        .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .format   = VK_FORMAT_R32G32B32_SFLOAT,
         .offset   = 0
+    };
+
+    VkVertexInputAttributeDescription colorAttributeDescription = {
+        .location = 1,
+        .binding  = 0,
+        .format   = VK_FORMAT_R32_UINT,
+        .offset   = sizeof(glm::vec3)
+    };
+
+    VkVertexInputAttributeDescription vertexInputAttributeDescriptions[] = {
+        positionAttributeDescription,
+        colorAttributeDescription
     };
 
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {
@@ -681,8 +693,8 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .flags                           = 0,
         .vertexBindingDescriptionCount   = 1,
         .pVertexBindingDescriptions      = &vertexInputBindingDescription,
-        .vertexAttributeDescriptionCount = 1,
-        .pVertexAttributeDescriptions    = &vertexInputAttributeDescription
+        .vertexAttributeDescriptionCount = 2,
+        .pVertexAttributeDescriptions    = vertexInputAttributeDescriptions
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo = {
