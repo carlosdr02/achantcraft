@@ -230,7 +230,7 @@ int main() {
     float& aspectRatio = getAspectRatio();
     aspectRatio = extent.width / (float)extent.height;
 
-    Camera camera(glm::vec3(0.0f, 50.0f, 0.0f), glm::vec3(0.0f, 50.0f, -1.0f), 90.0f);
+    Camera camera(glm::vec3(0.0f, 50.0f, 0.0f), glm::vec3(1.0f, 50.0f, 0.0f), 90.0f);
 
     glfwSetWindowUserPointer(window, &camera);
     glfwSetCursorPosCallback(window, cursorPosCallback);

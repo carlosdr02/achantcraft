@@ -664,7 +664,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
 
     VkVertexInputBindingDescription vertexInputBindingDescription = {
         .binding   = 0,
-        .stride    = sizeof(glm::vec4),
+        .stride    = 2 * sizeof(glm::vec4),
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
     };
 
@@ -682,9 +682,17 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .offset   = sizeof(glm::vec3)
     };
 
+    VkVertexInputAttributeDescription normalAttributeDescription = {
+        .location = 2,
+        .binding  = 0,
+        .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .offset   = sizeof(glm::vec4)
+    };
+
     VkVertexInputAttributeDescription vertexInputAttributeDescriptions[] = {
         positionAttributeDescription,
-        colorAttributeDescription
+        colorAttributeDescription,
+        normalAttributeDescription
     };
 
     VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {
@@ -693,7 +701,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .flags                           = 0,
         .vertexBindingDescriptionCount   = 1,
         .pVertexBindingDescriptions      = &vertexInputBindingDescription,
-        .vertexAttributeDescriptionCount = 2,
+        .vertexAttributeDescriptionCount = COUNT_OF(vertexInputAttributeDescriptions),
         .pVertexAttributeDescriptions    = vertexInputAttributeDescriptions
     };
 
@@ -721,7 +729,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, const GraphicsPipelineCreateI
         .flags                   = 0,
         .depthClampEnable        = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode             = VK_POLYGON_MODE_LINE,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
         .cullMode                = VK_CULL_MODE_BACK_BIT,
         .frontFace               = VK_FRONT_FACE_CLOCKWISE,
         .depthBiasEnable         = VK_FALSE,
@@ -915,12 +923,12 @@ Scene::Scene(Device& device, VkRenderPass renderPass, uint32_t vertexCount, uint
     graphicsPipeline = createGraphicsPipeline(device.logical, graphicsPipelineCreateInfo);
 
     // Create the vertex buffer.
-    vertexBufferSize = vertexCount * sizeof(glm::vec4);
-    vertexBuffer = new Buffer(device, vertexCount * sizeof(glm::vec4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vertexBufferSize = vertexCount * 2 * sizeof(glm::vec4);
+    vertexBuffer = new Buffer(device, vertexBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // Create the index buffer.
     indexBufferSize = indexCount * sizeof(uint16_t);
-    indexBuffer = new Buffer(device, indexCount * sizeof(uint16_t), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    indexBuffer = new Buffer(device, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 }
 
 void Scene::destroy(VkDevice device) {
@@ -1082,7 +1090,7 @@ void Renderer::recordCommandBuffers(VkDevice device, VkRenderPass renderPass, Vk
         };
 
         VkClearValue clearValues[] = {
-            { 0.0f, 0.0f, 0.0f, 1.0f },
+            { 0.0f, 0.749f, 1.0f, 1.0f },
             { 1.0f, 0 }
         };
 
