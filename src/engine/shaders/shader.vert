@@ -8,7 +8,7 @@ layout(location = 0) out vec3 outColor;
 layout(location = 1) out vec3 outNormal;
 
 layout(set = 0, binding = 0) uniform Camera {
-    mat4 view;
+    mat4 viewProjection;
     mat4 projection;
 } camera;
 
@@ -23,5 +23,5 @@ const vec3 colors[] = {
 void main() {
     outColor = colors[inColor];
     outNormal = inNormal.xyz;
-    gl_Position = camera.projection * camera.view * vec4(inPosition, 1.0);
+    gl_Position = camera.viewProjection * vec4(inPosition, 1.0);
 }
