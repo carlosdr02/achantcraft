@@ -251,9 +251,11 @@ int main() {
         if (glfwGetKey(window, GLFW_KEY_SPACE)) camera.translation += cameraUpVector * cameraSpeed;
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) camera.translation -= cameraUpVector * cameraSpeed;
 
+        glm::mat4 viewMatrix = camera.getViewMatrix(cameraUpVector);
+
         glm::mat4 viewProjectionMatrices[] = {
-            camera.getProjectionMatrix() * camera.getViewMatrix(cameraUpVector),
-            glm::mat4(1.0)
+            camera.getProjectionMatrix() * viewMatrix,
+            glm::inverse(viewMatrix)
         };
 
         scene.flushMappedUniformBufferMemory(device.logical, viewProjectionMatrices);
