@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include <vector>
+
 #include <imgui_impl_vulkan.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
@@ -464,23 +466,43 @@ Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
 
     vkCreateCommandPool(device.logical, &commandPoolCreateInfo, nullptr, &transientCommandPool);
 
+    // Create the descriptor set layout.
+    VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
+        .binding            = 0,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        .descriptorCount    = 1,
+        .stageFlags         = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        .pImmutableSamplers = nullptr
+    };
+
+    VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = nullptr,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &descriptorSetLayoutBinding
+    };
+
+    vkCreateDescriptorSetLayout(device.logical, &descriptorSetLayoutCreateInfo, nullptr, &perFrameDescriptorSetLayout);
+
     // Get the swapchain image count.
     vkGetSwapchainImagesKHR(device.logical, swapchain, &swapchainImageCount, nullptr);
 
     allocateSwapchainResourcesMemory();
     createSwapchainResources(device.logical, createInfo);
+    createFrameResources(device.logical);
     allocateOffscreenResourcesMemory();
     createOffscreenResources(device, createInfo);
-    createFrameResources(device.logical);
 }
 
 void Renderer::destroy(VkDevice device) {
-    destroyFrameResources(device);
     destroyOffscreenResources(device);
     freeOffscreenResourcesMemory();
+    destroyFrameResources(device);
     destroySwapchainResources(device);
     freeSwapchainResourcesMemory();
 
+    vkDestroyDescriptorSetLayout(device, perFrameDescriptorSetLayout, nullptr);
     vkDestroyCommandPool(device, transientCommandPool, nullptr);
     vkDestroyCommandPool(device, normalCommandPool, nullptr);
     vkDestroySwapchainKHR(device, swapchain, nullptr);
@@ -502,12 +524,12 @@ void Renderer::recordCommandBuffers(VkDevice device) {
         VkImageMemoryBarrier2 imageMemoryBarrier = {
             .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
             .pNext               = nullptr,
-            .srcStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_NONE,
             .srcAccessMask       = VK_ACCESS_2_NONE,
-            .dstStageMask        = VK_PIPELINE_STAGE_2_CLEAR_BIT,
-            .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
             .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
-            .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .image               = offscreenImages[i],
@@ -528,25 +550,13 @@ void Renderer::recordCommandBuffers(VkDevice device) {
 
         vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
 
-        VkClearColorValue clearColorValue = {
-            0.5f, 0.0f, 1.0f, 1.0f
-        };
+        // TODO: Bind descriptor sets.
 
-        VkImageSubresourceRange imageSubresourceRange = {
-            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseMipLevel   = 0,
-            .levelCount     = 1,
-            .baseArrayLayer = 0,
-            .layerCount     = 1
-        };
-
-        vkCmdClearColorImage(normalCommandBuffers[i], offscreenImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColorValue, 1, &imageSubresourceRange);
-
-        imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT;
-        imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+        imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
         imageMemoryBarrier.dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
         imageMemoryBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
-        imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageMemoryBarrier.oldLayout     = VK_IMAGE_LAYOUT_GENERAL;
         imageMemoryBarrier.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
         vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
@@ -769,16 +779,16 @@ void Renderer::resize(Device& device, const RendererCreateInfo& createInfo) {
 }
 
 void Renderer::setFramesInFlight(Device& device, const RendererCreateInfo& createInfo) {
-    destroyFrameResources(device.logical);
     destroyOffscreenResources(device.logical);
     freeOffscreenResourcesMemory();
+    destroyFrameResources(device.logical);
 
     framesInFlight = createInfo.framesInFlight;
     frameIndex = 0;
 
+    createFrameResources(device.logical);
     allocateOffscreenResourcesMemory();
     createOffscreenResources(device, createInfo);
-    createFrameResources(device.logical);
 }
 
 void Renderer::createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain) {
@@ -853,9 +863,84 @@ void Renderer::createSwapchainResources(VkDevice device, const RendererCreateInf
     }
 }
 
+void Renderer::createFrameResources(VkDevice device) {
+    // Create the descriptor pool.
+    VkDescriptorPoolSize descriptorPoolSizes[] = {
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, framesInFlight }
+    };
+
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = nullptr,
+        .flags         = 0,
+        .maxSets       = framesInFlight,
+        .poolSizeCount = ARRAY_SIZE(descriptorPoolSizes),
+        .pPoolSizes    = descriptorPoolSizes
+    };
+
+    vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool);
+
+    // Allocate the descriptor sets.
+    descriptorSets = new VkDescriptorSet[framesInFlight];
+
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts(framesInFlight, perFrameDescriptorSetLayout);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .descriptorPool     = descriptorPool,
+        .descriptorSetCount = framesInFlight,
+        .pSetLayouts        = descriptorSetLayouts.data()
+    };
+
+    vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, descriptorSets);
+
+    // Allocate the command buffers.
+    normalCommandBuffers = new VkCommandBuffer[framesInFlight];
+    transientCommandBuffers = new VkCommandBuffer[framesInFlight];
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext              = nullptr,
+        .commandPool        = normalCommandPool,
+        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = framesInFlight
+    };
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, normalCommandBuffers);
+
+    commandBufferAllocateInfo.commandPool = transientCommandPool;
+
+    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, transientCommandBuffers);
+
+    // Create the semaphores and fences.
+    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
+    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
+    fences = new VkFence[framesInFlight];
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        VkSemaphoreCreateInfo semaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+        };
+
+        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
+        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
+
+        VkFenceCreateInfo fenceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
+        };
+
+        vkCreateFence(device, &fenceCreateInfo, nullptr, &fences[i]);
+    }
+}
+
 void Renderer::allocateOffscreenResourcesMemory() {
     offscreenImages = new VkImage[framesInFlight];
-    //offscreenImageViews = new VkImageView[framesInFlight];
+    offscreenImageViews = new VkImageView[framesInFlight];
 }
 
 void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo& createInfo) {
@@ -874,11 +959,11 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
             .tiling                = VK_IMAGE_TILING_OPTIMAL,
-            .usage                 = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            .usage                 = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
-            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED // TODO
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED
         };
 
         vkCreateImage(device.logical, &imageCreateInfo, nullptr, &offscreenImages[i]);
@@ -927,52 +1012,34 @@ void Renderer::createOffscreenResources(Device& device, const RendererCreateInfo
             .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
         };
 
-        //vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
+        vkCreateImageView(device.logical, &imageViewCreateInfo, nullptr, &offscreenImageViews[i]);
     }
-}
 
-void Renderer::createFrameResources(VkDevice device) {
-    // Allocate the command buffers.
-    normalCommandBuffers = new VkCommandBuffer[framesInFlight];
-    transientCommandBuffers = new VkCommandBuffer[framesInFlight];
-
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
-        .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext              = nullptr,
-        .commandPool        = normalCommandPool,
-        .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = framesInFlight
-    };
-
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, normalCommandBuffers);
-
-    commandBufferAllocateInfo.commandPool = transientCommandPool;
-
-    vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, transientCommandBuffers);
-
-    // Create the semaphores and fences.
-    imageAvailableSemaphores = new VkSemaphore[framesInFlight];
-    renderFinishedSemaphores = new VkSemaphore[framesInFlight];
-    fences = new VkFence[framesInFlight];
+    // Update the descriptor sets.
+    VkDescriptorImageInfo* descriptorImageInfos = new VkDescriptorImageInfo[framesInFlight];
+    VkWriteDescriptorSet* writeDescriptorSets = new VkWriteDescriptorSet[framesInFlight];
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0
-        };
+        descriptorImageInfos[i].sampler     = VK_NULL_HANDLE;
+        descriptorImageInfos[i].imageView   = offscreenImageViews[i];
+        descriptorImageInfos[i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAvailableSemaphores[i]);
-        vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderFinishedSemaphores[i]);
-
-        VkFenceCreateInfo fenceCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = VK_FENCE_CREATE_SIGNALED_BIT
-        };
-
-        vkCreateFence(device, &fenceCreateInfo, nullptr, &fences[i]);
+        writeDescriptorSets[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[i].pNext            = nullptr;
+        writeDescriptorSets[i].dstSet           = descriptorSets[i];
+        writeDescriptorSets[i].dstBinding       = 0;
+        writeDescriptorSets[i].dstArrayElement  = 0;
+        writeDescriptorSets[i].descriptorCount  = 1;
+        writeDescriptorSets[i].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[i].pImageInfo       = &descriptorImageInfos[i];
+        writeDescriptorSets[i].pBufferInfo      = nullptr;
+        writeDescriptorSets[i].pTexelBufferView = nullptr;
     }
+
+    vkUpdateDescriptorSets(device.logical, framesInFlight, writeDescriptorSets, 0, nullptr);
+
+    delete[] writeDescriptorSets;
+    delete[] descriptorImageInfos;
 }
 
 void Renderer::freeSwapchainResourcesMemory() {
@@ -985,23 +1052,6 @@ void Renderer::destroySwapchainResources(VkDevice device) {
     for (uint32_t i = 0; i < swapchainImageCount; ++i) {
         vkDestroyFramebuffer(device, framebuffers[i], nullptr);
         vkDestroyImageView(device, swapchainImageViews[i], nullptr);
-    }
-}
-
-void Renderer::freeOffscreenResourcesMemory() {
-    //delete[] offscreenImageViews;
-    delete[] offscreenImages;
-}
-
-void Renderer::destroyOffscreenResources(VkDevice device) {
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        //vkDestroyImageView(device, offscreenImageViews[i], nullptr);
-    }
-
-    vkFreeMemory(device, offscreenImagesMemory, nullptr);
-
-    for (uint32_t i = 0; i < framesInFlight; ++i) {
-        vkDestroyImage(device, offscreenImages[i], nullptr);
     }
 }
 
@@ -1021,4 +1071,24 @@ void Renderer::destroyFrameResources(VkDevice device) {
 
     delete[] transientCommandBuffers;
     delete[] normalCommandBuffers;
+    delete[] descriptorSets;
+
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+}
+
+void Renderer::freeOffscreenResourcesMemory() {
+    delete[] offscreenImageViews;
+    delete[] offscreenImages;
+}
+
+void Renderer::destroyOffscreenResources(VkDevice device) {
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImageView(device, offscreenImageViews[i], nullptr);
+    }
+
+    vkFreeMemory(device, offscreenImagesMemory, nullptr);
+
+    for (uint32_t i = 0; i < framesInFlight; ++i) {
+        vkDestroyImage(device, offscreenImages[i], nullptr);
+    }
 }
