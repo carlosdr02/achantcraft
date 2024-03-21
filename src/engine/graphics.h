@@ -50,6 +50,7 @@ private:
 
 VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear);
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
+VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, const VkDescriptorSetLayout* setLayouts);
 
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
@@ -61,6 +62,8 @@ struct RendererCreateInfo {
 
 class Renderer {
 public:
+    VkDescriptorSetLayout descriptorSetLayout;
+
     Renderer() = default;
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
@@ -77,7 +80,6 @@ private:
     VkSwapchainKHR swapchain;
     VkCommandPool normalCommandPool;
     VkCommandPool transientCommandPool;
-    VkDescriptorSetLayout descriptorSetLayout;
     uint32_t swapchainImageCount;
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
