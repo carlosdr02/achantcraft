@@ -52,6 +52,22 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format, bool clear);
 VkDescriptorPool createGuiDescriptorPool(VkDevice device);
 VkPipelineLayout createPipelineLayout(VkDevice device, uint32_t setLayoutCount, const VkDescriptorSetLayout* setLayouts);
 
+enum ShaderBindingTableStage {
+    SHADER_BINDING_TABLE_STAGE_RAYGEN,
+    SHADER_BINDING_TABLE_STAGE_MISS,
+    SHADER_BINDING_TABLE_STAGE_HIT
+};
+
+struct ShaderBindingTableEntry {
+    ShaderBindingTableStage stage;
+    const char* generalShader;
+    const char* closestHitShader;
+    const char* anyHitShader;
+    const char* intersectionShader;
+};
+
+VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout);
+
 struct RendererCreateInfo {
     VkSurfaceKHR surface;
     const VkSurfaceCapabilitiesKHR* surfaceCapabilities;

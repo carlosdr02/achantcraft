@@ -490,6 +490,13 @@ static VkShaderModule createShaderModule(VkDevice device, const char* fileName) 
     return shaderModule;
 }
 
+// TODO:
+VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout) {
+    VkPipeline pipeline;
+
+    return pipeline;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
     : framesInFlight(createInfo.framesInFlight)
     , frameIndex(0)
