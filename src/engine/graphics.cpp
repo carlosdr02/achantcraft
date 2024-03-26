@@ -496,14 +496,14 @@ static VkShaderModule createShaderModule(VkDevice device, const char* fileName) 
     return shaderModule;
 }
 
-static void populateShaderStageCreateInfo(VkPipelineShaderStageCreateInfo* shaderStageCreateInfos, uint32_t i, VkShaderStageFlagBits stage, VkShaderModule module) {
-    shaderStageCreateInfos[i].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    shaderStageCreateInfos[i].pNext               = nullptr;
-    shaderStageCreateInfos[i].flags               = 0;
-    shaderStageCreateInfos[i].stage               = stage;
-    shaderStageCreateInfos[i].module              = module;
-    shaderStageCreateInfos[i].pName               = "main";
-    shaderStageCreateInfos[i].pSpecializationInfo = nullptr;
+static void populateShaderStageCreateInfo(VkPipelineShaderStageCreateInfo& shaderStageCreateInfo, VkShaderStageFlagBits stage, VkShaderModule module) {
+    shaderStageCreateInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageCreateInfo.pNext               = nullptr;
+    shaderStageCreateInfo.flags               = 0;
+    shaderStageCreateInfo.stage               = stage;
+    shaderStageCreateInfo.module              = module;
+    shaderStageCreateInfo.pName               = "main";
+    shaderStageCreateInfo.pSpecializationInfo = nullptr;
 }
 
 VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout) {
@@ -545,10 +545,10 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
             shaderModules[j] = createShaderModule(device, entries[i].generalShader);
 
             if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_RAYGEN) {
-                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_RAYGEN_BIT_KHR, shaderModules[j]);
+                populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_RAYGEN_BIT_KHR, shaderModules[j]);
             }
             else {
-                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_MISS_BIT_KHR, shaderModules[j]);
+                populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_MISS_BIT_KHR, shaderModules[j]);
             }
 
             shaderGroupCreateInfos[i].type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
@@ -557,19 +557,25 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
         else {
             if (entries[i].closestHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].closestHitShader);
-                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderModules[j]);
+
+                populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderModules[j]);
+
                 shaderGroupCreateInfos[i].closestHitShader = j++;
             }
 
             if (entries[i].anyHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].anyHitShader);
-                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_ANY_HIT_BIT_KHR, shaderModules[j]);
+
+                populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_ANY_HIT_BIT_KHR, shaderModules[j]);
+
                 shaderGroupCreateInfos[i].anyHitShader = j++;
             }
 
             if (entries[i].intersectionShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].intersectionShader);
-                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shaderModules[j]);
+
+                populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shaderModules[j]);
+
                 shaderGroupCreateInfos[i].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
                 shaderGroupCreateInfos[i].intersectionShader = j++;
             }
