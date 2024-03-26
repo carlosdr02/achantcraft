@@ -113,7 +113,7 @@ private:
     VkImage* offscreenImages;
     VkDeviceMemory offscreenImagesMemory;
     VkImageView* offscreenImageViews;
-    uint32_t frameIndex;
+    uint32_t frameIndex = 0;
 
     void createSwapchain(VkDevice device, const RendererCreateInfo& createInfo, VkSwapchainKHR oldSwapchain);
     void allocateSwapchainResourcesMemory();

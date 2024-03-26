@@ -496,6 +496,16 @@ static VkShaderModule createShaderModule(VkDevice device, const char* fileName) 
     return shaderModule;
 }
 
+static void populateShaderStageCreateInfo(VkPipelineShaderStageCreateInfo* shaderStageCreateInfos, uint32_t i, VkShaderStageFlagBits stage, VkShaderModule module) {
+    shaderStageCreateInfos[i].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderStageCreateInfos[i].pNext               = nullptr;
+    shaderStageCreateInfos[i].flags               = 0;
+    shaderStageCreateInfos[i].stage               = stage;
+    shaderStageCreateInfos[i].module              = module;
+    shaderStageCreateInfos[i].pName               = "main";
+    shaderStageCreateInfos[i].pSpecializationInfo = nullptr;
+}
+
 VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout) {
     uint32_t shaderStageCount = 0;
 
@@ -530,78 +540,39 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
         if (entries[i].stage != SHADER_BINDING_TABLE_STAGE_HIT) {
             shaderModules[j] = createShaderModule(device, entries[i].generalShader);
 
-            shaderStageCreateInfos[j].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-            shaderStageCreateInfos[j].pNext               = nullptr;
-            shaderStageCreateInfos[j].flags               = 0;
-            shaderStageCreateInfos[j].module              = shaderModules[j];
-            shaderStageCreateInfos[j].pName               = "main";
-            shaderStageCreateInfos[j].pSpecializationInfo = nullptr;
-
             if (entries[i].stage == SHADER_BINDING_TABLE_STAGE_RAYGEN) {
-                shaderStageCreateInfos[j].stage = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_RAYGEN_BIT_KHR, shaderModules[j]);
             }
             else {
-                shaderStageCreateInfos[j].stage = VK_SHADER_STAGE_MISS_BIT_KHR;
+                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_MISS_BIT_KHR, shaderModules[j]);
             }
 
             shaderGroupCreateInfos[i].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
-            shaderGroupCreateInfos[i].generalShader      = j;
+            shaderGroupCreateInfos[i].generalShader      = j++;
             shaderGroupCreateInfos[i].closestHitShader   = VK_SHADER_UNUSED_KHR;
             shaderGroupCreateInfos[i].anyHitShader       = VK_SHADER_UNUSED_KHR;
             shaderGroupCreateInfos[i].intersectionShader = VK_SHADER_UNUSED_KHR;
-
-            ++j;
         }
         else {
             shaderGroupCreateInfos[i].generalShader = VK_SHADER_UNUSED_KHR;
 
             if (entries[i].closestHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].closestHitShader);
-
-                shaderStageCreateInfos[j].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                shaderStageCreateInfos[j].pNext               = nullptr;
-                shaderStageCreateInfos[j].flags               = 0;
-                shaderStageCreateInfos[j].stage               = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-                shaderStageCreateInfos[j].module              = shaderModules[j];
-                shaderStageCreateInfos[j].pName               = "main";
-                shaderStageCreateInfos[j].pSpecializationInfo = nullptr;
-
-                shaderGroupCreateInfos[i].closestHitShader = j;
-
-                ++j;
+                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderModules[j]);
+                shaderGroupCreateInfos[i].closestHitShader = j++;
             }
 
             if (entries[i].anyHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].anyHitShader);
-
-                shaderStageCreateInfos[j].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                shaderStageCreateInfos[j].pNext               = nullptr;
-                shaderStageCreateInfos[j].flags               = 0;
-                shaderStageCreateInfos[j].stage               = VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-                shaderStageCreateInfos[j].module              = shaderModules[j];
-                shaderStageCreateInfos[j].pName               = "main";
-                shaderStageCreateInfos[j].pSpecializationInfo = nullptr;
-
-                shaderGroupCreateInfos[i].anyHitShader = j;
-
-                ++j;
+                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_ANY_HIT_BIT_KHR, shaderModules[j]);
+                shaderGroupCreateInfos[i].anyHitShader = j++;
             }
 
             if (entries[i].intersectionShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].intersectionShader);
-
-                shaderStageCreateInfos[j].sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                shaderStageCreateInfos[j].pNext               = nullptr;
-                shaderStageCreateInfos[j].flags               = 0;
-                shaderStageCreateInfos[j].stage               = VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
-                shaderStageCreateInfos[j].module              = shaderModules[j];
-                shaderStageCreateInfos[j].pName               = "main";
-                shaderStageCreateInfos[j].pSpecializationInfo = nullptr;
-
-                shaderGroupCreateInfos[i].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
-                shaderGroupCreateInfos[i].intersectionShader = j;
-
-                ++j;
+                populateShaderStageCreateInfo(shaderStageCreateInfos, j, VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shaderModules[j]);
+                shaderGroupCreateInfos[i].type = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
+                shaderGroupCreateInfos[i].intersectionShader = j++;
             }
             else {
                 shaderGroupCreateInfos[i].type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
@@ -640,10 +611,7 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
     return pipeline;
 }
 
-Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo)
-    : framesInFlight(createInfo.framesInFlight)
-    , frameIndex(0)
-{
+Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
     // Create the command pools.
