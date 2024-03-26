@@ -19,6 +19,7 @@ private:
 class Device {
 public:
     VkPhysicalDevice physical;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingPipelineProperties;
     Queue renderQueue;
     VkDevice logical;
 
