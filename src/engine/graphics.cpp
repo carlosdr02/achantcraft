@@ -557,25 +557,19 @@ VkPipeline createRayTracingPipeline(VkDevice device, uint32_t entryCount, const 
         else {
             if (entries[i].closestHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].closestHitShader);
-
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shaderModules[j]);
-
                 shaderGroupCreateInfos[i].closestHitShader = j++;
             }
 
             if (entries[i].anyHitShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].anyHitShader);
-
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_ANY_HIT_BIT_KHR, shaderModules[j]);
-
                 shaderGroupCreateInfos[i].anyHitShader = j++;
             }
 
             if (entries[i].intersectionShader != nullptr) {
                 shaderModules[j] = createShaderModule(device, entries[i].intersectionShader);
-
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_INTERSECTION_BIT_KHR, shaderModules[j]);
-
                 shaderGroupCreateInfos[i].type               = VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR;
                 shaderGroupCreateInfos[i].intersectionShader = j++;
             }
@@ -732,6 +726,10 @@ void Renderer::recordCommandBuffers(VkDevice device) {
     }
 }
 
+// the swapchain image memory barrier can be prerecorded, but it requires one
+// more command buffer in the second batch, i gotta see if its worth it, but
+// not now, since the application has a really low workload, better test when
+// the rendering is more complex.
 bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent) {
     vkWaitForFences(device.logical, 1, &fences[frameIndex], VK_TRUE, UINT64_MAX);
 
