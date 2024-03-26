@@ -626,6 +626,10 @@ void RayTracingPipeline::destroy(VkDevice device) {
     vkDestroyPipeline(device, pipeline, nullptr);
 }
 
+RayTracingPipeline::operator VkPipeline() {
+    return pipeline;
+}
+
 Renderer::Renderer(Device& device, const RendererCreateInfo& createInfo) : framesInFlight(createInfo.framesInFlight) {
     createSwapchain(device.logical, createInfo, VK_NULL_HANDLE);
 
@@ -685,7 +689,7 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void Renderer::recordCommandBuffers(VkDevice device) {
+void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, RayTracingPipeline& rayTracingPipeline) {
     vkResetCommandPool(device, normalCommandPool, 0);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
@@ -727,7 +731,8 @@ void Renderer::recordCommandBuffers(VkDevice device) {
 
         vkCmdPipelineBarrier2(normalCommandBuffers[i], &dependencyInfo);
 
-        // TODO: Bind descriptor sets.
+        vkCmdBindDescriptorSets(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+        vkCmdBindPipeline(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rayTracingPipeline);
 
         imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;

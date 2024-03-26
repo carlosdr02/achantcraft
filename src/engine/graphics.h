@@ -75,6 +75,8 @@ public:
     RayTracingPipeline(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout);
     void destroy(VkDevice device);
 
+    operator VkPipeline();
+
 private:
     VkPipeline pipeline;
 };
@@ -95,7 +97,7 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device);
+    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, RayTracingPipeline& rayTracingPipeline);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);
