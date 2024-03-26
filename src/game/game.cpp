@@ -15,13 +15,13 @@ Game::Game() {
 
 Game::~Game() {
     renderer.waitIdle(device.logical);
+    rayTracingPipeline.destroy(device.logical);
     renderer.destroy(device.logical);
 
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    vkDestroyPipeline(device.logical, rayTracingPipeline, nullptr);
     vkDestroyPipelineLayout(device.logical, pipelineLayout, nullptr);
     vkDestroyDescriptorPool(device.logical, guiDescriptorPool, nullptr);
     vkDestroyRenderPass(device.logical, renderPass, nullptr);
@@ -85,7 +85,7 @@ void Game::createEngineResources() {
         { .stage = SHADER_BINDING_TABLE_STAGE_RAYGEN, .generalShader = "raygen.spv" }
     };
 
-    rayTracingPipeline = createRayTracingPipeline(device.logical, 1, sbtEntries, pipelineLayout);
+    rayTracingPipeline = RayTracingPipeline(device, 1, sbtEntries, pipelineLayout);
 }
 
 void Game::createGuiResources() {
