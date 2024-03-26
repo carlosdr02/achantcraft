@@ -97,7 +97,7 @@ public:
     Renderer(Device& device, const RendererCreateInfo& createInfo);
     void destroy(VkDevice device);
 
-    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, RayTracingPipeline& rayTracingPipeline);
+    void recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, RayTracingPipeline& rayTracingPipeline, VkExtent2D extent);
     bool render(Device& device, VkRenderPass renderPass, VkExtent2D extent);
 
     void waitIdle(VkDevice device);

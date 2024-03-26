@@ -693,7 +693,7 @@ void Renderer::destroy(VkDevice device) {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, RayTracingPipeline& rayTracingPipeline) {
+void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLayout, RayTracingPipeline& rayTracingPipeline, VkExtent2D extent) {
     vkResetCommandPool(device, normalCommandPool, 0);
 
     for (uint32_t i = 0; i < framesInFlight; ++i) {
