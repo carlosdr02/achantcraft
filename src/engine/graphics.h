@@ -71,6 +71,10 @@ struct ShaderBindingTableEntry {
 
 class RayTracingPipeline {
 public:
+    VkStridedDeviceAddressRegionKHR raygen;
+    VkStridedDeviceAddressRegionKHR miss;
+    VkStridedDeviceAddressRegionKHR hit;
+
     RayTracingPipeline() = default;
     RayTracingPipeline(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout);
     void destroy(VkDevice device);
@@ -79,6 +83,7 @@ public:
 
 private:
     VkPipeline pipeline;
+    Buffer shaderBindingTable;
 };
 
 struct RendererCreateInfo {

@@ -526,6 +526,7 @@ static VkDeviceSize alignNumber(uint32_t number, uint32_t alignment) {
 }
 
 RayTracingPipeline::RayTracingPipeline(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout) {
+    // Create the pipeline.
     uint32_t shaderStageCount = 0;
 
     for (uint32_t i = 0; i < entryCount; ++i) {
@@ -551,6 +552,8 @@ RayTracingPipeline::RayTracingPipeline(Device& device, uint32_t entryCount, cons
     VkPipelineShaderStageCreateInfo* shaderStageCreateInfos = new VkPipelineShaderStageCreateInfo[shaderStageCount];
     VkRayTracingShaderGroupCreateInfoKHR* shaderGroupCreateInfos = new VkRayTracingShaderGroupCreateInfoKHR[entryCount];
 
+    uint32_t missGroupCount = 0;
+
     for (uint32_t i = 0, j = 0; i < entryCount; ++i) {
         shaderGroupCreateInfos[i].sType                           = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
         shaderGroupCreateInfos[i].pNext                           = nullptr;
@@ -568,6 +571,7 @@ RayTracingPipeline::RayTracingPipeline(Device& device, uint32_t entryCount, cons
             }
             else {
                 populateShaderStageCreateInfo(shaderStageCreateInfos[j], VK_SHADER_STAGE_MISS_BIT_KHR, shaderModules[j]);
+                ++missGroupCount;
             }
 
             shaderGroupCreateInfos[i].type          = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
@@ -624,9 +628,47 @@ RayTracingPipeline::RayTracingPipeline(Device& device, uint32_t entryCount, cons
     delete[] shaderGroupCreateInfos;
     delete[] shaderStageCreateInfos;
     delete[] shaderModules;
+
+    // Calculate the number of hit groups.
+    uint32_t hitGroupCount = entryCount - missGroupCount - 1;
+
+    // Create the shader binding table.
+    const uint32_t handleSize = device.rayTracingPipelineProperties.shaderGroupHandleSize;
+    const uint32_t baseAlignment = device.rayTracingPipelineProperties.shaderGroupBaseAlignment;
+    raygen.stride = raygen.size = alignNumber(handleSize, baseAlignment);
+
+    const uint32_t handleAlignment = device.rayTracingPipelineProperties.shaderGroupHandleAlignment;
+    const uint32_t alignedHandleSize = alignNumber(handleSize, handleAlignment);
+    miss.stride = alignedHandleSize;
+    miss.size = alignNumber(missGroupCount * alignedHandleSize, baseAlignment);
+
+    hit.stride = alignedHandleSize;
+    hit.size = hitGroupCount * alignedHandleSize;
+
+    VkDeviceSize sbtSize = raygen.size + miss.size + hit.size;
+    shaderBindingTable = Buffer(device, sbtSize,
+            VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    raygen.deviceAddress = shaderBindingTable.getDeviceAddress(device.logical);
+    miss.deviceAddress = raygen.deviceAddress + raygen.size;
+    hit.deviceAddress = miss.deviceAddress + miss.size;
+
+    char* handles = new char[sbtSize];
+    vkGetRayTracingShaderGroupHandles(device.logical, pipeline, 0, entryCount, sbtSize, handles);
+
+    {
+        void* data;
+        vkMapMemory(device.logical, shaderBindingTable.memory, 0, sbtSize, 0, &data);
+        memcpy(data, handles, sbtSize);
+        vkUnmapMemory(device.logical, shaderBindingTable.memory);
+    }
+
+    delete[] handles;
 }
 
 void RayTracingPipeline::destroy(VkDevice device) {
+    shaderBindingTable.destroy(device);
     vkDestroyPipeline(device, pipeline, nullptr);
 }
 
@@ -737,6 +779,10 @@ void Renderer::recordCommandBuffers(VkDevice device, VkPipelineLayout pipelineLa
 
         vkCmdBindDescriptorSets(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
         vkCmdBindPipeline(normalCommandBuffers[i], VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rayTracingPipeline);
+
+        VkStridedDeviceAddressRegionKHR callable = {};
+
+        vkCmdTraceRays(normalCommandBuffers[i], &rayTracingPipeline.raygen, &rayTracingPipeline.miss, &rayTracingPipeline.hit, &callable, extent.width, extent.height, 1);
 
         imageMemoryBarrier.srcStageMask  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
         imageMemoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
