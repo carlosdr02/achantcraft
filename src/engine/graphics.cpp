@@ -732,17 +732,6 @@ void Renderer::recordCommandBuffers(VkDevice device) {
     }
 }
 
-// note: i gotta test which of the following approaches is more efficient:
-//
-// 1. prefer fast CPU time by prerecording the swapchain image memory barriers
-//    into new command buffers.
-//
-// 2. prefer fast GPU time by batching the last off-screen image memory barrier
-//    and the first swapchain image memory barrier into the same
-//    vkCmdPipelineBarrier2 call, recorded every frame.
-//
-// there is no point in testing that right now since the application has a
-// really low workload, i gotta revisit this when the rendering is more complex.
 bool Renderer::render(Device& device, VkRenderPass renderPass, VkExtent2D extent) {
     vkWaitForFences(device.logical, 1, &fences[frameIndex], VK_TRUE, UINT64_MAX);
 
