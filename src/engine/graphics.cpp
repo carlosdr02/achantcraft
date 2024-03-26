@@ -517,6 +517,10 @@ static void populateShaderStageCreateInfo(VkPipelineShaderStageCreateInfo& shade
     shaderStageCreateInfo.pSpecializationInfo = nullptr;
 }
 
+static VkDeviceSize alignNumber(uint32_t number, uint32_t alignment) {
+    return (number + alignment - 1) & ~(alignment - 1);
+}
+
 RayTracingPipeline::RayTracingPipeline(Device& device, uint32_t entryCount, const ShaderBindingTableEntry* entries, VkPipelineLayout pipelineLayout) {
     uint32_t shaderStageCount = 0;
 
